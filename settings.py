@@ -24,6 +24,7 @@ REMINDER_CHANNEL = get_env('REMINDER_CHANNEL')
 WOWAUDIT_GUILD_ID = get_env('WOWAUDIT_GUILD_ID')
 WOWAUDIT_TEAM_ID = get_env('WOWAUDIT_TEAM_ID')
 WOWAUDIT_COOKIE = get_env('WOWAUDIT_COOKIE')
+DISCORD_BOSS = get_env('DISCORD_BOSS')
 
 
 # Number of hours before each raid to post the reminder"
@@ -32,4 +33,9 @@ REMINDER_HOURS = 48
 # Map character names to discord tag, in order to ping the stragglers
 DISC_MAP = {
     'Mcpickle': 'McPickle#6783',
+    'Welfir': 'KasperRT#3925',
+    'Hisui': 'Hisui#2710',
+    'Narla': 'Rich#9973',
+    'Maluminse': 'Pip#3143',
+    'Ceia': 'Gevelten#0329',
 }

@@ -32,7 +32,7 @@ async def get_raids():
         Dict: JSON from API containing all raids.
     """
     req_str = f'{BASE_URL}/raids'
-
+    
     async with aiohttp.ClientSession() as session:
         async with session.get(
             req_str,

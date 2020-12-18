@@ -2,6 +2,7 @@
 import wowaudit_helper
 import datetime
 import settings
+import aiohttp
 import asyncio
 
 import discord
@@ -12,7 +13,8 @@ class AndromedaClient(discord.Client):
 
     def __init__(self):
         """Init subclass."""
-        super().__init__()
+        intents = discord.Intents.all()
+        super().__init__(intents=intents)
         self.loop.create_task(self.reminder_scheduler())
 
     async def get_stragglers(self, raid_id):
@@ -21,7 +23,8 @@ class AndromedaClient(discord.Client):
         signups = raid['signups']
         stragglers = []
         for signup in signups:
-            if signup['status'] == 'absent' and signup['comment'] is None:
+            # Signups default to late if not set
+            if (signup['status'] == 'absent' or signup['status'] == 'late') and signup['comment'] is None:
                 stragglers.append(signup['character']['name'])
 
         return stragglers
@@ -60,25 +63,44 @@ class AndromedaClient(discord.Client):
     async def reminder_scheduler(self):
         """Loop that calls the remind function before every raid."""
         await self.wait_until_ready()
-        # First raid we search to find
-        next_raid = await self._get_next_raid()
-        while not self.is_closed():
-            # If there are no raids we wait for 10 mins and check again
-            if next_raid is None:
-                await asyncio.sleep(600)
+        try:
+
+            # First raid we search to find
+            next_raid = await self._get_next_raid()
+            while not self.is_closed():
+                # If there are no raids we wait for 10 mins and check again
+                if next_raid is None:
+                    await asyncio.sleep(600)
+                    next_raid = await self._get_next_raid()
+                    # Reloop to check again for NoneType
+                    continue
+
+                reminder_target = await self._get_reminder_time(next_raid)
+                # Get the number of seconds until we should remind 'em
+                delay = (reminder_target - datetime.datetime.now()).total_seconds()
+                await asyncio.sleep(delay)
+
+                await self.remind(next_raid['date'])
+                # We can get the next raid directly from wowaudit
                 next_raid = await self._get_next_raid()
-                # Reloop to check again for NoneType
-                continue
+        except TypeError as e:
+            # This should probably be better implemented, seeing this catches all crashes
+            # Send message to bossboi that we crashed trying to fetch data and remind
+            await self.bossboi.send('Errored `reminder_scheduler`, cookie might be dead. Reply to me with the cookie _only_. I will await 1 min, until I check again.')
+        except aiohttp.ClientConnectorError as e:
+            await self.bossboi.send('Errored `reminder_scheduler`, cannot connect to wowaudit. Trying again in 1 min.')
+        finally:
+            await asyncio.sleep(60)
+            self.loop.create_task(self.reminder_scheduler())
 
-            reminder_target = await self._get_reminder_time(next_raid)
-            # Get the number of seconds until we should remind 'em
-            delay = (reminder_target - datetime.datetime.now()).total_seconds()
-            await asyncio.sleep(delay)
-
-            await self.remind(next_raid['date'])
-
-            # We can get the next raid directly from wowaudit
-            next_raid = await wowaudit_helper.get_raid(next_raid['nextRaid'])
+    async def on_message(self, message):
+        # Check if alive, easily
+        if(message.content == "ping"):
+            await message.channel.send('pong')
+        # Only allow messaging from bossboi for updating cookie
+        elif(message.author.name + "#" + message.author.discriminator == settings.DISCORD_BOSS):
+            settings.WOWAUDIT_COOKIE = message.content
+            await self.bossboi.send('Updated cookie to `' + settings.WOWAUDIT_COOKIE + '`')
 
     async def remind(self, raid_id):
         """Post the reminder by pinging all non-signers."""
@@ -88,10 +110,11 @@ class AndromedaClient(discord.Client):
             disc_name = s
             # Add the ping if we found them in the discord map
             if s in settings.DISC_MAP:
-                disc_name = '@' + settings.DISC_MAP[s]
+                # Add character-name as well, just in case
+                disc_name = '@' + settings.DISC_MAP[s] + ' (' + s + '),'
             straggler_string += disc_name + ', '
 
-        straggler_string += 'Please sign up for upcoming raid!'
+        straggler_string += 'please sign up for upcoming raid!'
         await self.reminder_channel.send(straggler_string)
 
     async def on_ready(self):
@@ -101,12 +124,12 @@ class AndromedaClient(discord.Client):
                 for channel in guild.text_channels:
                     if channel.name == settings.REMINDER_CHANNEL:
                         self.reminder_channel = channel
+                        self.bossboi = next((x for x in guild.members if x.name + "#" + x.discriminator == settings.DISCORD_BOSS), None)
                         break
                 break
         print(
             f'Connected to: {guild.name}'
         )
-
 
 client = AndromedaClient()
 client.run(settings.DISCORD_TOKEN)
