@@ -97,11 +97,16 @@ class AndromedaClient(discord.Client):
             # General error-handling for sending all errors to bossboi
             template = "An exception of type {0} occurred. Retrying stuff in 1 min. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
-            await self.bossboi.send('```\nmessage\n```)
+            await self.bossboi.send('```\n' + message + '\n```')
         finally:
             await asyncio.sleep(60)
             self.loop.create_task(self.reminder_scheduler())
 
+    def tag_user(self, tag):
+        user = self.get_member_by_tag(tag)
+        if not user:
+            return tag
+        return "<@!" + str(user.id) + ">"
 
     async def on_message(self, message):
         # Check if alive, easily
@@ -121,7 +126,7 @@ class AndromedaClient(discord.Client):
             # Add the ping if we found them in the discord map
             if s in settings.DISC_MAP:
                 # Add character-name as well, just in case
-                disc_name = '@' + settings.DISC_MAP[s] + ' (' + s + '),'
+                disc_name = self.tag_user(settings.DISC_MAP[s]) + ' (' + s + ')'
                 await self.send_individual_message(settings.DISC_MAP[s], raid_id)
             straggler_string += disc_name + ', '
 
