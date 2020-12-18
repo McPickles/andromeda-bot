@@ -74,24 +74,34 @@ class AndromedaClient(discord.Client):
                     next_raid = await self._get_next_raid()
                     # Reloop to check again for NoneType
                     continue
-
+                    
                 reminder_target = await self._get_reminder_time(next_raid)
                 # Get the number of seconds until we should remind 'em
                 delay = (reminder_target - datetime.datetime.now()).total_seconds()
                 await asyncio.sleep(delay)
 
-                await self.remind(next_raid['date'])
+                await self.remind(next_raid['date'], next_raid['id'])
                 # We can get the next raid directly from wowaudit
                 next_raid = await self._get_next_raid()
+
+        # This should probably be better implemented, seeing this catches all crashes
         except TypeError as e:
-            # This should probably be better implemented, seeing this catches all crashes
-            # Send message to bossboi that we crashed trying to fetch data and remind
-            await self.bossboi.send('Errored `reminder_scheduler`, cookie might be dead. Reply to me with the cookie _only_. I will await 1 min, until I check again.')
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(e).__name__, e.args)
+            await self.bossboi.send('Errored `reminder_scheduler`, cookie might be dead. Reply to me with the cookie _only_. I will await 1 min, until I check again.\n```\nError: ' + message + '\n```')
         except aiohttp.ClientConnectorError as e:
-            await self.bossboi.send('Errored `reminder_scheduler`, cannot connect to wowaudit. Trying again in 1 min.')
+            template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+            message = template.format(type(e).__name__, e.args)
+            await self.bossboi.send('Errored `reminder_scheduler`, cannot connect to wowaudit. Trying again in 1 min.\n```\nError: ' + message + '\n```')
+        except Exception as e:
+            # General error-handling for sending all errors to bossboi
+            template = "An exception of type {0} occurred. Retrying stuff in 1 min. Arguments:\n{1!r}"
+            message = template.format(type(e).__name__, e.args)
+            await self.bossboi.send('```\nmessage\n```)
         finally:
             await asyncio.sleep(60)
             self.loop.create_task(self.reminder_scheduler())
+
 
     async def on_message(self, message):
         # Check if alive, easily
@@ -102,9 +112,9 @@ class AndromedaClient(discord.Client):
             settings.WOWAUDIT_COOKIE = message.content
             await self.bossboi.send('Updated cookie to `' + settings.WOWAUDIT_COOKIE + '`')
 
-    async def remind(self, raid_id):
+    async def remind(self, raid_date, raid_id):
         """Post the reminder by pinging all non-signers."""
-        stragglers = await self.get_stragglers(raid_id)
+        stragglers = await self.get_stragglers(raid_date)
         straggler_string = ''
         for s in stragglers:
             disc_name = s
@@ -112,10 +122,21 @@ class AndromedaClient(discord.Client):
             if s in settings.DISC_MAP:
                 # Add character-name as well, just in case
                 disc_name = '@' + settings.DISC_MAP[s] + ' (' + s + '),'
+                await self.send_individual_message(settings.DISC_MAP[s], raid_id)
             straggler_string += disc_name + ', '
 
         straggler_string += 'please sign up for upcoming raid!'
         await self.reminder_channel.send(straggler_string)
+
+    # Send message to individual member, for even more following
+    async def send_individual_message(self, tag, raid_id):
+        user = self.get_member_by_tag(tag)
+        if not user:
+            return
+        await user.send('I cannot see you have signed up for the raid.\nPlease update your signup on https://wowaudit.com/eu/stormrage/andromeda/main/raids/' + str(raid_id) + ', or notify one of the officers :slight_smile:')
+
+    def get_member_by_tag(self, tag):
+        return next((x for x in self.guild.members if x.name + "#" + x.discriminator == tag), None)
 
     async def on_ready(self):
         """On bot connection."""
@@ -123,12 +144,13 @@ class AndromedaClient(discord.Client):
             if guild.name == settings.DISCORD_GUILD_NAME:
                 for channel in guild.text_channels:
                     if channel.name == settings.REMINDER_CHANNEL:
+                        self.guild = guild
                         self.reminder_channel = channel
-                        self.bossboi = next((x for x in guild.members if x.name + "#" + x.discriminator == settings.DISCORD_BOSS), None)
+                        self.bossboi = self.get_member_by_tag(settings.DISCORD_BOSS)
                         break
                 break
         print(
-            f'Connected to: {guild.name}'
+            f'Connected to: {self.guild.name}'
         )
 
 client = AndromedaClient()

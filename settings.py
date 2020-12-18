@@ -34,6 +34,7 @@ REMINDER_HOURS = 48
 DISC_MAP = {
     'Mcpickle': 'McPickle#6783',
     'Welfir': 'KasperRT#3925',
+    'Boltar': 'KasperRT#3925',
     'Hisui': 'Hisui#2710',
     'Narla': 'Rich#9973',
     'Maluminse': 'Pip#3143',
