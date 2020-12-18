@@ -19,7 +19,7 @@ class AndromedaClient(discord.Client):
 
     async def get_stragglers(self, raid_id):
         """Get a list of unsigned people."""
-        raid = await wowaudit_helper.get_raid(raid_id)
+        raid = await wowaudit_helper.get_raid(settings, raid_id)
         signups = raid['signups']
         stragglers = []
         for signup in signups:
@@ -47,7 +47,7 @@ class AndromedaClient(discord.Client):
 
     async def _get_next_raid(self):
         """Get the next raid to be reminded."""
-        raids = await wowaudit_helper.get_raids()
+        raids = await wowaudit_helper.get_raids(settings)
         now = datetime.datetime.now()
         for r in raids:
             # When should this raid be reminded?
@@ -88,16 +88,16 @@ class AndromedaClient(discord.Client):
         except TypeError as e:
             template = "An exception of type {0} occurred. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
-            await self.bossboi.send('Errored `reminder_scheduler`, cookie might be dead. Reply to me with the cookie _only_. I will await 1 min, until I check again.\n```\nError: ' + message + '\n```')
+            await self.bossboi.send(f'Errored `reminder_scheduler`, cookie might be dead. Reply to me with the cookie _only_. I will await 1 min, until I check again.\n```\nError: {message}\n```')
         except aiohttp.ClientConnectorError as e:
             template = "An exception of type {0} occurred. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
-            await self.bossboi.send('Errored `reminder_scheduler`, cannot connect to wowaudit. Trying again in 1 min.\n```\nError: ' + message + '\n```')
+            await self.bossboi.send(f'Errored `reminder_scheduler`, cannot connect to wowaudit. Trying again in 1 min.\n```\nError: {message}\n```')
         except Exception as e:
             # General error-handling for sending all errors to bossboi
             template = "An exception of type {0} occurred. Retrying stuff in 1 min. Arguments:\n{1!r}"
             message = template.format(type(e).__name__, e.args)
-            await self.bossboi.send('```\n' + message + '\n```')
+            await self.bossboi.send(f'```\n{message}\n```')
         finally:
             await asyncio.sleep(60)
             self.loop.create_task(self.reminder_scheduler())
@@ -109,13 +109,20 @@ class AndromedaClient(discord.Client):
         return "<@!" + str(user.id) + ">"
 
     async def on_message(self, message):
+        global settings
         # Check if alive, easily
         if(message.content == "ping"):
             await message.channel.send('pong')
         # Only allow messaging from bossboi for updating cookie
         elif(message.author.name + "#" + message.author.discriminator == settings.DISCORD_BOSS):
             settings.WOWAUDIT_COOKIE = message.content
-            await self.bossboi.send('Updated cookie to `' + settings.WOWAUDIT_COOKIE + '`')
+            try:
+                # Test if new cookie works
+                await wowaudit_helper.get_raids(settings)
+                await self.bossboi.send(f'Updated cookie to `{settings.WOWAUDIT_COOKIE}`')
+            except Exception as e:
+                await self.bossboi.send(f'Cookie value doesnt work.\n```\n{e}\n```')
+
 
     async def remind(self, raid_date, raid_id):
         """Post the reminder by pinging all non-signers."""
@@ -126,7 +133,7 @@ class AndromedaClient(discord.Client):
             # Add the ping if we found them in the discord map
             if s in settings.DISC_MAP:
                 # Add character-name as well, just in case
-                disc_name = self.tag_user(settings.DISC_MAP[s]) + ' (' + s + ')'
+                disc_name = f'{self.tag_user(settings.DISC_MAP[s])} ({s})'
                 await self.send_individual_message(settings.DISC_MAP[s], raid_id)
             straggler_string += disc_name + ', '
 
@@ -138,7 +145,7 @@ class AndromedaClient(discord.Client):
         user = self.get_member_by_tag(tag)
         if not user:
             return
-        await user.send('I cannot see you have signed up for the raid.\nPlease update your signup on https://wowaudit.com/eu/stormrage/andromeda/main/raids/' + str(raid_id) + ', or notify one of the officers :slight_smile:')
+        await user.send(f'I cannot see you have signed up for the raid.\nPlease update your signup on https://wowaudit.com/eu/stormrage/andromeda/main/raids/{str(raid_id)}, or notify one of the officers :slight_smile:')
 
     def get_member_by_tag(self, tag):
         return next((x for x in self.guild.members if x.name + "#" + x.discriminator == tag), None)
