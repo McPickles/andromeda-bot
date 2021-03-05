@@ -2,7 +2,7 @@
 
 import os
 from dotenv import load_dotenv
-import discord_map.py
+import discord_map
 
 load_dotenv()
 

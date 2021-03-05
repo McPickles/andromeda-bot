@@ -24,7 +24,7 @@ class AndromedaClient(discord.Client):
         stragglers = []
         for signup in signups:
             # Signups default to late if not set
-            if (signup['status'] == 'absent' or signup['status'] == 'late') and signup['comment'] is None:
+            if (signup['status'] == 'late') and signup['comment'] is None:
                 stragglers.append(signup['character']['name'])
 
         return stragglers
