@@ -2,6 +2,7 @@
 
 import os
 from dotenv import load_dotenv
+import discord_map.py
 
 load_dotenv()
 
@@ -31,12 +32,4 @@ DISCORD_BOSS = get_env('DISCORD_BOSS')
 REMINDER_HOURS = 48
 
 # Map character names to discord tag, in order to ping the stragglers
-DISC_MAP = {
-    'Mcpickle': 'McPickle#6783',
-    'Welfir': 'KasperRT#3925',
-    'Boltar': 'Boltar[The Bois]#1918',
-    'Hisui': 'Hisui#2710',
-    'Narla': 'Rich#9973',
-    'Maluminse': 'Pip#3143',
-    'Ceia': 'Gevelten#0329',
-}
+DISC_MAP = discord_map.DISC_MAP
