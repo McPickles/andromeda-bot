@@ -102,11 +102,8 @@ class AndromedaClient(discord.Client):
             await asyncio.sleep(60)
             self.loop.create_task(self.reminder_scheduler())
 
-    def tag_user(self, tag):
-        user = self.get_member_by_tag(tag)
-        if not user:
-            return tag
-        return "<@!" + str(user.id) + ">"
+    def tag_user(self, id):
+        return "<@!" + str(id) + ">"
 
     async def on_message(self, message):
         global settings
