@@ -135,6 +135,7 @@ class AndromedaClient(discord.Client):
             straggler_string += disc_name + ', '
 
         straggler_string += 'please sign up for upcoming raid!'
+        straggler_string += ' ' + wowaudit_helper.get_raid_link(settings, raid_id)
         await self.reminder_channel.send(straggler_string)
 
     # Send message to individual member, for even more following

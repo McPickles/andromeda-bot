@@ -63,3 +63,7 @@ async def get_raid(settings, raid_id):
             if "error" in json:
                 raise Exception("Unauthorized")
             return json
+
+
+def get_raid_link(settings, raid_id):
+    return f'https://wowaudit.com/{settings.REGION}/{settings.REALM_NAME}/{settings.GUILD_NAME}/mythic/raids/{raid_id}'
