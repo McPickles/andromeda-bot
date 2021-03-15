@@ -26,6 +26,9 @@ WOWAUDIT_GUILD_ID = get_env('WOWAUDIT_GUILD_ID')
 WOWAUDIT_TEAM_ID = get_env('WOWAUDIT_TEAM_ID')
 WOWAUDIT_COOKIE = get_env('WOWAUDIT_COOKIE')
 DISCORD_BOSS = get_env('DISCORD_BOSS')
+REGION = get_env('REGION')
+REALM_NAME = get_env('REALM_NAME')
+GUILD_NAME = get_env('GUILD_NAME')
 
 
 # Number of hours before each raid to post the reminder"
