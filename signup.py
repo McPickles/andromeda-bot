@@ -137,6 +137,7 @@ class AndromedaClient(discord.Client):
         straggler_string += 'please sign up for upcoming raid!'
         straggler_string += ' ' + wowaudit_helper.get_raid_link(settings, raid_id)
         await self.reminder_channel.send(straggler_string)
+        await self.reminder_channel.send('https://cdn.discordapp.com/attachments/304213304438423552/841394291083313239/sp.gif')
 
     # Send message to individual member, for even more following
     async def send_individual_message(self, tag, raid_id):
